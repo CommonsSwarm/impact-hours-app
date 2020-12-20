@@ -1,0 +1,8 @@
+{
+  "name": "Impact Hours",
+  "author": "Token Engineering Commons",
+  "description": "Mints tokens for IH contributors at a rate dependant of how much funds the Hatch has raised",
+  "details_url": "/meta/details.md",
+  "source_url": "https://github.com/TECommons/impact-hours",
+  "icons": [{ "src": "/meta/icon.svg", "sizes": "56x56" }]
+}

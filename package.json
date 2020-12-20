@@ -1,0 +1,53 @@
+{
+  "name": "@tecommons/impact-hours",
+  "version": "1.0.0",
+  "scripts": {
+    "compile": "buidler compile --force",
+    "lint": "solium --dir ./contracts",
+    "test": "buidler test --network buidlerevm",
+    "test:gas": "REPORT_GAS=true buidler test --network localhost",
+    "coverage": "buidler coverage --network coverage",
+    "abi:extract": "buidler-extract --output abi/ --keys abi",
+    "publish:major": "buidler publish major",
+    "publish:minor": "buidler publish minor",
+    "publish:patch": "buidler publish patch"
+  },
+  "files": [
+    "/arapp.json",
+    "/build",
+    "/contracts",
+    "/test"
+  ],
+  "keywords": [],
+  "description": "Mints tokens for IH contributors at a rate dependant of how much funds the Hatch has raised",
+  "devDependencies": {
+    "@aragon/buidler-aragon": "^0.2.9",
+    "@nomiclabs/buidler": "^1.4.3",
+    "@nomiclabs/buidler-etherscan": "^1.3.3",
+    "@nomiclabs/buidler-ganache": "^1.3.3",
+    "@nomiclabs/buidler-solhint": "^1.3.3",
+    "@nomiclabs/buidler-truffle5": "^1.3.4",
+    "@nomiclabs/buidler-web3": "^1.3.4",
+    "babel-eslint": "^10.0.3",
+    "buidler-extract": "^1.0.0",
+    "buidler-gas-reporter": "^0.1.3",
+    "eslint": "^5.13.0",
+    "eslint-config-prettier": "^6.5.0",
+    "eslint-config-standard": "^14.1.0",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-node": "^10.0.0",
+    "eslint-plugin-prettier": "^3.0.1",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "eth-ens-namehash": "^2.0.8",
+    "ethlint": "^1.2.3",
+    "prettier": "^1.17.1",
+    "solidity-coverage": "^0.7.9",
+    "solium": "^1.2.5",
+    "web3": "^1.2.11"
+  },
+  "dependencies": {
+    "@aragon/contract-helpers-test": "0.1.0",
+    "@aragon/os": "^4.0.1"
+  }
+}

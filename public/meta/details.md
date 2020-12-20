@@ -1,0 +1,3 @@
+When the Hatch has reached it's goal, the Impact Hours app mints tokens for IH contributors at a rate dependant of how much funds the Hatch has raised.
+
+The more funds that are raised, the higher the hourly wage for impact hours becomes. Additionally, the more funds that are raised, the lower the portion of tokens that go to pay for Impact Hours. These two properties mean working hatchers are incentivised to raise more funds, and funding hatchers are incentivised to invest more funds.

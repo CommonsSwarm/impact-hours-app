@@ -29,6 +29,7 @@ contract ImpactHours is AragonApp, IACLOracle {
         hatch = Hatch(_hatch);
         maxRate = _maxRate;
         expectedRaisePerIH = _expectedRaisePerIH;
+        initialized();
     }
 
     function addImpactHours(address[] _contributors, uint256[] _hours, bool _last) external auth(ADD_IMPACT_HOURS_ROLE) {

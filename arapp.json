@@ -29,9 +29,9 @@
       "wsRPC": "wss://mainnet.eth.aragon.network/ws",
       "network": "mainnet"
     },
-    "xdai": {
+    "frame": {
       "registry": "0xaafca6b0c89521752e559650206d7c925fd0e530",
-      "appName": "impact-hours.open.aragonpm.eth",
+      "appName": "impact-hours-beta.open.aragonpm.eth",
       "network": "xdai",
       "wsRPC": "wss://xdai.poanetwork.dev/wss"
     }

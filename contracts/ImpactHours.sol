@@ -10,7 +10,7 @@ contract ImpactHours is AragonApp, IACLOracle {
     using SafeMath for uint256;
 
     bytes32 public constant ADD_IMPACT_HOURS_ROLE = keccak256("ADD_IMPACT_HOURS_ROLE");
-    uint8 private constant GOAL_REACHED = 3; // Position 3 in Hatch's state enum
+    uint8 private constant GOAL_REACHED = 4; // Hatch state number 4, enum begin with 1
 
     bool finalized = false;
     mapping(address => uint256) impactHours;

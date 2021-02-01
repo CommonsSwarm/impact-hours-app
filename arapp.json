@@ -1,8 +1,8 @@
 {
   "roles": [
     {
-      "name": "Add impact hours",
-      "id": "ADD_IMPACT_HOURS_ROLE",
+      "name": "Claim tokens",
+      "id": "CLAIM_ROLE",
       "params": []
     }
   ],
@@ -29,7 +29,7 @@
       "wsRPC": "wss://mainnet.eth.aragon.network/ws",
       "network": "mainnet"
     },
-    "frame": {
+    "xdai": {
       "registry": "0xaafca6b0c89521752e559650206d7c925fd0e530",
       "appName": "impact-hours-beta.open.aragonpm.eth",
       "network": "xdai",

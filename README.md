@@ -10,7 +10,8 @@ The more funds that are raised, the higher the hourly wage for impact hours beco
 
 ## Initialization
 
-The Impact Hours is initialized with `address _hatch`, `uint256 _maxRate_`, and `uint256 _expectedRaisePerIH` parameters.
+The Impact Hours is initialized with `MiniMeToken _token`, `address _hatch`, `uint256 _maxRate_`, and `uint256 _expectedRaisePerIH` parameters.
+- The `MiniMeToken _token` is the address of the Impact Hours token.
 - The `address _hatch` parameter is the address of the Hatch that Impact Hours are for.
 - The `uint256 _maxRate` and `uint256 _expectedRaisePerIH` are used to determine how much tokens will be minted per IH based on the total raised amount.
 
@@ -26,7 +27,7 @@ The formula has three parameters:
 ## Roles
 
 The Impact Hours app should implement the following roles:
-- **ADD_IMPACT_HOURS_ROLE**: This allows for changing the token address that the Hatch Oracle tracks.
+- **CLAIM_ROLE**: It allows to claim Hatch tokens by burning the Impact Hour tokens. Anyone should be able to claim.
 
 The Impact Hours app should have the following roles:
 - **MINT_ROLE**: It should be able to mint tokens in the Hatch's Token Manager.
@@ -36,9 +37,9 @@ The Impact Hours app can be used as ACL oracle for the following role:
 
 ## Interface
 
-The Hatch Oracle does not have an interface. It is meant as a back-end contract to be used with other Aragon applications.
+The Impact Hours app does not have an interface. It is meant as a back-end contract to be used with other Aragon applications.
 
-## How to run Hatch Oracle locally
+## How to run Impact Hours locally
 
 The Impact Hours app works in tandem with other Aragon applications. While we do not explore this functionality as a stand alone demo, the [TEC template](https://github.com/TECommons/tec-template) uses the Impact Hours and it can be run locally.
 

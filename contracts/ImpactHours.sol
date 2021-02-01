@@ -3,62 +3,52 @@ pragma solidity ^0.4.24;
 import "@aragon/os/contracts/apps/AragonApp.sol";
 import "@aragon/os/contracts/acl/IACLOracle.sol";
 import "@aragon/os/contracts/lib/math/SafeMath.sol";
+import "@aragon/minime/contracts/MiniMeToken.sol";
 import { IHatch as Hatch } from "./IHatch.sol";
 
 
 contract ImpactHours is AragonApp, IACLOracle {
     using SafeMath for uint256;
 
-    bytes32 public constant ADD_IMPACT_HOURS_ROLE = keccak256("ADD_IMPACT_HOURS_ROLE");
-    uint8 private constant GOAL_REACHED = 4; // Hatch state number 4, enum begin with 1
+    bytes32 public constant CLAIM_ROLE = keccak256("CLAIM_ROLE");
+    uint8 private constant GOAL_REACHED = 3;
 
-    bool finalized = false;
-    mapping(address => uint256) impactHours;
-    uint256 totalImpactHours = 0;
-    uint256 claimedImpactHours = 0;
-    Hatch hatch;
-    uint256 maxRate;
-    uint256 expectedRaisePerIH;
+    MiniMeToken public token;
+    Hatch public hatch;
+    uint256 public maxRate;
+    uint256 public expectedRaisePerIH;
+    uint256 public totalIH;
 
-    string private constant ERROR_ALREADY_FINALIZED            = "IH_ALREADY_FINALIZED";
-    string private constant ERROR_CONTRIBUTORS_HOURS_MISMATCH  = "IH_CONTRIBUTORS_HOURS_MISMATCH";
-    string private constant ERROR_NOT_FINALIZED_YET            = "IH_NOT_FINALIZED_YET";
-    string private constant ERROR_HATCH_NOT_GOAL_REACHED       = "IH_HATCH_NOT_GOAL_REACHED";
+    string private constant ERROR_HATCH_NOT_GOAL_REACHED = "IH_HATCH_NOT_GOAL_REACHED";
 
-    function initialize(address _hatch, uint256 _maxRate, uint256 _expectedRaisePerIH) external onlyInit {
+    function initialize(MiniMeToken _token, address _hatch, uint256 _maxRate, uint256 _expectedRaisePerIH) external onlyInit {
+        // We clone the IH token so we can burn it as soon as it is claimed
+        token = _token.createCloneToken(_token.name(), _token.decimals(), _token.symbol(), 0, false);
         hatch = Hatch(_hatch);
         maxRate = _maxRate;
         expectedRaisePerIH = _expectedRaisePerIH;
+        totalIH = token.totalSupply(); // We store a local copy of total amount of IH, because total supply will decrease as IH are claimed
         initialized();
     }
 
-    function addImpactHours(address[] _contributors, uint256[] _hours, bool _last) external auth(ADD_IMPACT_HOURS_ROLE) {
-        require(!finalized, ERROR_ALREADY_FINALIZED);
-        require(_contributors.length == _hours.length, ERROR_CONTRIBUTORS_HOURS_MISMATCH);
-        for (uint256 i = 0; i < _contributors.length; i++) {
-            impactHours[_contributors[i]] = _hours[i];
-            totalImpactHours = totalImpactHours.add(_hours[i]);
-        }
-        // We won't allow adding more hours if `_last` is true
-        finalized = _last;
-    }
-
-    function claimReward(address[] _contributors) external isInitialized {
-        require(finalized, ERROR_NOT_FINALIZED_YET);
+    function claimReward(address[] _contributors) external auth(CLAIM_ROLE) {
         require(hatch.state() == GOAL_REACHED, ERROR_HATCH_NOT_GOAL_REACHED);
         for (uint256 i = 0; i < _contributors.length; i++) {
             uint256 _amount = hatch.contributionToTokens(reward(hatch.totalRaised(), _contributors[i]));
-            claimedImpactHours = claimedImpactHours.add(impactHours[_contributors[i]]);
-            impactHours[_contributors[i]] = 0;
+            token.destroyTokens(_contributors[i], token.balanceOf(_contributors[i]));
+            require(token.balanceOf(_contributors[i]) == 0); // All claimed tokens should be burned
             hatch.tokenManager().mint(_contributors[i], _amount);
         }
     }
 
     function canPerform(address, address, bytes32, uint256[]) external view isInitialized returns (bool) {
-        return finalized && claimedImpactHours == totalImpactHours;
+        return token.totalSupply() == 0;
     }
 
     function reward(uint256 totalRaised, address contributor) public view isInitialized returns (uint256) {
-        return impactHours[contributor].mul(maxRate).mul(totalRaised).div(totalRaised.add(expectedRaisePerIH.mul(totalImpactHours)));
+        if (totalRaised == 0) {
+            return 0;
+        }
+        return token.balanceOf(contributor).mul(maxRate).mul(totalRaised).div(totalRaised.add(expectedRaisePerIH.mul(totalIH)));
     }
 }

@@ -48,6 +48,7 @@
   },
   "dependencies": {
     "@aragon/contract-helpers-test": "0.1.0",
+    "@aragon/minime": "^1.0.0",
     "@aragon/os": "^4.0.1"
   }
 }

@@ -1,8 +1,8 @@
 {
   "roles": [
     {
-      "name": "Claim tokens",
-      "id": "CLAIM_ROLE",
+      "name": "Close hatch",
+      "id": "CLOSE_ROLE",
       "params": []
     }
   ],

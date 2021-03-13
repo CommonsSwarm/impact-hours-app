@@ -27,13 +27,11 @@ The formula has three parameters:
 ## Roles
 
 The Impact Hours app should implement the following roles:
-- **CLAIM_ROLE**: It allows to claim Hatch tokens by burning the Impact Hour tokens. Anyone should be able to claim.
+- **CLOSE_ROLE**: It allows to close the Hatch when all impact hours tokens have been claimed. Anyone should be able to close.
 
 The Impact Hours app should have the following roles:
 - **MINT_ROLE**: It should be able to mint tokens in the Hatch's Token Manager.
-
-The Impact Hours app can be used as ACL oracle for the following role:
-- **CLOSE_ROLE**: It can prevent calling the Hatch's `close()` function if all impact hours has not been claimed.
+- **CLOSE_ROLE**: It should be able to call the Hatch's `close()` function if all impact hours have been claimed.
 
 ## Interface
 

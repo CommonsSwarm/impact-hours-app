@@ -5,7 +5,7 @@ const MiniMeTokenFactory = artifacts.require('MiniMeTokenFactory')
 const Hatch = artifacts.require('HatchMock')
 const TokenManager = artifacts.require('TokenManagerMock')
 
-const { newDao, installNewApp, createEqOraclePermissionParam, ANY_ENTITY } = require('@aragon/contract-helpers-test/src/aragon-os')
+const { newDao, installNewApp, ANY_ENTITY } = require('@aragon/contract-helpers-test/src/aragon-os')
 const { assertBn } = require('@aragon/contract-helpers-test/src/asserts')
 
 const { hash: nameHash } = require('eth-ens-namehash')
@@ -16,7 +16,7 @@ contract(
   'ImpactHours',
   ([appManager, accountIH90, accountIH10]) => {
     let impactHoursBase, tokenManagerBase, hatchBase, impactHours, hatch, hatchToken, impactHoursToken, tokenFactory
-    let CLAIM_ROLE, MINT_ROLE, CLOSE_ROLE
+    let MINT_ROLE, CLOSE_ROLE
 
     const PPM = 1000000
     const EXCHANGE_RATE = 10 * PPM
@@ -29,7 +29,6 @@ contract(
       hatchBase = await Hatch.new()
       tokenFactory = await MiniMeTokenFactory.new()
       MINT_ROLE = await tokenManagerBase.MINT_ROLE()
-      CLAIM_ROLE = await impactHoursBase.CLAIM_ROLE()
       CLOSE_ROLE = await hatchBase.CLOSE_ROLE()
     })
 
@@ -70,7 +69,7 @@ contract(
       await hatch.initialize(tokenManager.address, EXCHANGE_RATE)
 
       await acl.createPermission(impactHours.address, tokenManager.address, MINT_ROLE, appManager)
-      await acl.createPermission(ANY_ENTITY, impactHours.address, CLAIM_ROLE, appManager)
+      await acl.createPermission(impactHours.address, hatch.address, CLOSE_ROLE, appManager)
     })
 
     describe('initialize(MiniMeToken _token, address _hatch, uint256 _maxRate, uint256 _expectedRaisePerIH)', () => {
@@ -182,43 +181,34 @@ contract(
       })
     })
 
-    describe('canPerform(address, address, bytes32, uint256[])', async() => {
+    describe('closeHatch()', async() => {
       beforeEach('initialize impact hours', async () => {
         await impactHours.initialize(impactHoursToken.address, hatch.address, MAX_RATE, EXPECTED_RAISE_PER_IH)
       })
+
+      context('with permission', async() => {
+        beforeEach('add CLOSE_ROLE permission', async() => {
+          await acl.createPermission(ANY_ENTITY, impactHours.address, CLOSE_ROLE, appManager)
+        })
+
+        it('can perform when all cloned impact hour tokens have been burned', async() => {
+          await hatch.setState(3)
+          await impactHours.claimReward([accountIH90, accountIH10])
+          await impactHours.closeHatch()
+          assert.strictEqual((await hatch.state()).toNumber(), 4)
+        })
   
-      it('can perform when all cloned impact hour tokens have been burned', async() => {
+        it('can not perform when not all cloned impact hour tokens have been burned', async() => {
+          await hatch.setState(3)
+          await impactHours.claimReward([accountIH90])
+          await assertRevert(impactHours.closeHatch(), 'ERROR_IMPACT_HOURS_NOT_FULLY_CLAIMED')
+        })
+      })
+
+      it('can not close hatch if addess do not have permission', async() => {
         await hatch.setState(3)
         await impactHours.claimReward([accountIH90, accountIH10])
-        assert.isTrue(await impactHours.canPerform(ZERO_ADDR, ZERO_ADDR, '0x', []))
-      })
-
-      it('can not perform when not all cloned impact hour tokens have been burned', async() => {
-        await hatch.setState(3)
-        await impactHours.claimReward([accountIH90])
-        assert.isFalse(await impactHours.canPerform(ZERO_ADDR, ZERO_ADDR, '0x', []))
-      })
-    })
-
-    describe('hatch.close()', async() => {
-      beforeEach(async() => {
-        await impactHours.initialize(impactHoursToken.address, hatch.address, MAX_RATE, EXPECTED_RAISE_PER_IH)
-        await acl.createPermission(ANY_ENTITY, hatch.address, CLOSE_ROLE, appManager)
-        await acl.grantPermissionP(ANY_ENTITY, hatch.address, CLOSE_ROLE, [createEqOraclePermissionParam(impactHours.address)])
-      })
-
-      it('can not close the hatch if not all impact hours have been claimed', async () => {
-        await hatch.setState(3)
-        await impactHours.claimReward([accountIH90])
-        await assertRevert(hatch.close())
-      })
-
-      it('can close when all impact hours have been claimed', async() => {
-        await hatch.setState(3)
-        await impactHours.claimReward([accountIH90, accountIH10])
-
-        assert.isTrue(await impactHours.canPerform(ZERO_ADDR, ZERO_ADDR, '0x', []))
-        await hatch.close()
+        await assertRevert(impactHours.closeHatch(), 'APP_AUTH_FAILED')
       })
     })
   }

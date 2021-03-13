@@ -36,7 +36,7 @@ contract HatchMock is AragonApp {
         initialized();
     }
 
-    function contribute(uint256 _amount) {
+    function contribute(uint256 _amount) external {
         totalRaised = totalRaised.add(_amount);
     }
 

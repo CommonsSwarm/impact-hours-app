@@ -10,30 +10,27 @@ The more funds that are raised, the higher the hourly wage for impact hours beco
 
 ## Initialization
 
-The Impact Hours is initialized with `MiniMeToken _token`, `address _hatch`, `uint256 _maxRate_`, and `uint256 _expectedRaisePerIH` parameters.
+The Impact Hours is initialized with `MiniMeToken _token`, `address _hatch`, `uint256 _maxRate_`, and `uint256 _expectedRaise` parameters.
 - The `MiniMeToken _token` is the address of the Impact Hours token.
 - The `address _hatch` parameter is the address of the Hatch that Impact Hours are for.
-- The `uint256 _maxRate` and `uint256 _expectedRaisePerIH` are used to determine how much tokens will be minted per IH based on the total raised amount.
+- The `uint256 _maxRate` and `uint256 _expectedRaise` are used to determine how much tokens will be minted per IH based on the total raised amount. We expect both of them are formatted as hatch's `contributionToken` (probably using 18 decimals).
 
 We determine the rate of each impact hour with the following formula where the independent variable (x) is the total funds raised:
 
-![R*x/(x+m*H)](https://forum.tecommons.org/uploads/default/original/1X/ed187f4401c6a8901199a6bf1e5916eec597905d.png)
+![R*x/(x+E)](https://render.githubusercontent.com/render/math?math=R\frac{x}{x+E})
 
-The formula has three parameters:
-* _H_ : Total number of impact hours.
-* _m_ : Expected raise per impact hour, in which the rate is half the max rate. A low number makes a more curved function, whereas a high number flattens the curve.
-* _R_ : Max IH rate limit. It’s an asymptotic limit never reached, no matter how much funds are raised.
+The formula has two parameters:
+* _R_ : Max rate limit per impact hour. It’s an asymptotic limit never reached, no matter how much funds are raised.
+* _E_ : Expected raise, in which the rate is half the max rate. A low number makes a more curved function, whereas a high number flattens the curve.
 
 ## Roles
 
-The Impact Hours app should implement the following roles:
-- **CLAIM_ROLE**: It allows to claim Hatch tokens by burning the Impact Hour tokens. Anyone should be able to claim.
+The Impact Hours app implements the following role:
+- **CLOSE_ROLE**: It allows to close the Hatch when all impact hours tokens have been claimed.
 
 The Impact Hours app should have the following roles:
 - **MINT_ROLE**: It should be able to mint tokens in the Hatch's Token Manager.
-
-The Impact Hours app can be used as ACL oracle for the following role:
-- **CLOSE_ROLE**: It can prevent calling the Hatch's `close()` function if all impact hours has not been claimed.
+- **CLOSE_ROLE**: It should be able to call the Hatch's `close()` function if all impact hours have been claimed.
 
 ## Interface
 

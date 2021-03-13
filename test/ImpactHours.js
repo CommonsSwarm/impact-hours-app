@@ -5,7 +5,7 @@ const MiniMeTokenFactory = artifacts.require('MiniMeTokenFactory')
 const Hatch = artifacts.require('HatchMock')
 const TokenManager = artifacts.require('TokenManagerMock')
 
-const { newDao, installNewApp, createEqOraclePermissionParam, ANY_ENTITY } = require('@aragon/contract-helpers-test/src/aragon-os')
+const { newDao, installNewApp, ANY_ENTITY } = require('@aragon/contract-helpers-test/src/aragon-os')
 const { assertBn } = require('@aragon/contract-helpers-test/src/asserts')
 
 const { hash: nameHash } = require('eth-ens-namehash')
@@ -15,13 +15,13 @@ const ZERO_ADDR = '0x' + '0'.repeat(40)
 contract(
   'ImpactHours',
   ([appManager, accountIH90, accountIH10]) => {
-    let impactHoursBase, tokenManagerBase, hatchBase, impactHours, hatch, hatchToken, impactHoursToken, tokenFactory
-    let CLAIM_ROLE, MINT_ROLE, CLOSE_ROLE
+    let impactHoursBase, tokenManagerBase, hatchBase, impactHours, hatch, hatchToken, impactHoursToken18, impactHoursToken10, tokenFactory
+    let MINT_ROLE, CLOSE_ROLE
 
     const PPM = 1000000
     const EXCHANGE_RATE = 10 * PPM
     const MAX_RATE = 100
-    const EXPECTED_RAISE_PER_IH = 1
+    const EXPECTED_RAISE = bigExp(100, 18)
 
     before('deploy base apps', async () => {
       impactHoursBase = await ImpactHours.new()
@@ -29,14 +29,18 @@ contract(
       hatchBase = await Hatch.new()
       tokenFactory = await MiniMeTokenFactory.new()
       MINT_ROLE = await tokenManagerBase.MINT_ROLE()
-      CLAIM_ROLE = await impactHoursBase.CLAIM_ROLE()
       CLOSE_ROLE = await hatchBase.CLOSE_ROLE()
     })
 
     before('create tokens', async () => {
-      impactHoursToken = await MiniMeToken.new(tokenFactory.address, ZERO_ADDR, 0, "Impact Hours", 18, "IH", false, { from: appManager })
-      await impactHoursToken.generateTokens(accountIH90, bigExp(90, 18))
-      await impactHoursToken.generateTokens(accountIH10, bigExp(10, 18))
+      const initializeToken = async (decimals) => {
+        const impactHoursToken = await MiniMeToken.new(tokenFactory.address, ZERO_ADDR, 0, "Impact Hours", decimals, "IH", false, { from: appManager })
+        await impactHoursToken.generateTokens(accountIH90, bigExp(90, decimals))
+        await impactHoursToken.generateTokens(accountIH10, bigExp(10, decimals))
+        return impactHoursToken
+      }
+      impactHoursToken18 = await initializeToken(18)
+      impactHoursToken10 = await initializeToken(10)
     })
 
     beforeEach('deploy dao and apps', async () => {
@@ -70,35 +74,35 @@ contract(
       await hatch.initialize(tokenManager.address, EXCHANGE_RATE)
 
       await acl.createPermission(impactHours.address, tokenManager.address, MINT_ROLE, appManager)
-      await acl.createPermission(ANY_ENTITY, impactHours.address, CLAIM_ROLE, appManager)
+      await acl.createPermission(impactHours.address, hatch.address, CLOSE_ROLE, appManager)
     })
 
-    describe('initialize(MiniMeToken _token, address _hatch, uint256 _maxRate, uint256 _expectedRaisePerIH)', () => {
+    describe('initialize(MiniMeToken _token, address _hatch, uint256 _maxRate, uint256 _expectedRaise)', () => {
       beforeEach('initialize impact hours', async () => {
-        await impactHours.initialize(impactHoursToken.address, hatch.address, MAX_RATE, EXPECTED_RAISE_PER_IH)
+        await impactHours.initialize(impactHoursToken18.address, hatch.address, MAX_RATE, EXPECTED_RAISE)
       })
 
       it('sets variables as expected', async () => {
         const actualHatch = await impactHours.hatch()
         const actualMaxRate = await impactHours.maxRate()
-        const actualExpectedRaisePerIH = await impactHours.expectedRaisePerIH()
+        const actualExpectedRaise = await impactHours.expectedRaise()
         const hasInitialized = await impactHours.hasInitialized()
 
         assert.strictEqual(actualHatch, hatch.address)
         assert.strictEqual(actualMaxRate.toString(), MAX_RATE.toString())
-        assert.strictEqual(actualExpectedRaisePerIH.toString(), EXPECTED_RAISE_PER_IH.toString())
+        assert.strictEqual(actualExpectedRaise.toString(), EXPECTED_RAISE.toString())
         assert.isTrue(hasInitialized)
       })
 
       it('has cloned the token and the control is kept by the impact hours contract', async () => {
         const actualToken = await MiniMeToken.at(await impactHours.token())
-        assert.strictEqual(await actualToken.parentToken(), impactHoursToken.address)
+        assert.strictEqual(await actualToken.parentToken(), impactHoursToken18.address)
         assert.strictEqual(await actualToken.controller(), impactHours.address)
       })
 
       it('reverts on reinitialization', async () => {
         await assertRevert(
-          impactHours.initialize(impactHoursToken.address, hatch.address, MAX_RATE, EXPECTED_RAISE_PER_IH),
+          impactHours.initialize(impactHoursToken18.address, hatch.address, MAX_RATE, EXPECTED_RAISE),
           'INIT_ALREADY_INITIALIZED'
         )
       })
@@ -106,7 +110,7 @@ contract(
 
     describe('claimReward(address[] _contributors)', async () => {
       beforeEach('initialize impact hours', async () => {
-        await impactHours.initialize(impactHoursToken.address, hatch.address, MAX_RATE, EXPECTED_RAISE_PER_IH)
+        await impactHours.initialize(impactHoursToken18.address, hatch.address, MAX_RATE, EXPECTED_RAISE)
       })
 
       it('can not claim if state is Pending', async () => {
@@ -144,81 +148,82 @@ contract(
       })
     })
 
-    const amount = (ih, maxRate, expectedRaise, raised) => ih.mul(maxRate).mul(raised).div(raised.add(expectedRaise))
+    const reward = async (amount, tokenDecimals, maxRate, expectedRaise, raised) =>
+      await hatch.contributionToTokens(amount.mul(maxRate).div(bigExp(1, tokenDecimals)).mul(raised).div(raised.add(expectedRaise)))
     const loop = f => {
       for (let maxRate of [10, 100]) {
-        for (let expectedRaisePerIH of [100, 10000]) {
+        for (let expectedRaise of [100, 10000]) {
           for (let raised of [0, 1000, 100000000]) {
-            it(`maxRate = ${maxRate}, expectedRaisePerIH = ${expectedRaisePerIH}, totalRaised = ${raised}`, f(maxRate, expectedRaisePerIH, raised))
+            it(
+              `maxRate = ${maxRate}, expectedRaise = ${expectedRaise}, totalRaised = ${raised}`,
+              () => f(bigExp(maxRate, 18), bigExp(expectedRaise, 18), bigExp(raised, 18))
+            )
           }
         }
       }
     }
 
-    describe('reward(uint256 totalRaised, address contributor))', async() => {
-      loop((maxRate, expectedRaisePerIH, raised) => async() => {
-        await impactHours.initialize(impactHoursToken.address, hatch.address, maxRate, expectedRaisePerIH)
+    const rewardTest = (impactHoursTokenDecimals) => {
+      loop(async (maxRate, expectedRaise, raised) => {
+        impactHoursToken = impactHoursTokenDecimals === 18 ? impactHoursToken18 : impactHoursToken10
+        await impactHours.initialize(impactHoursToken.address, hatch.address, maxRate, expectedRaise)
         assertBn(
-          await impactHours.reward(bigExp(raised, 18), accountIH90),
-          amount(await impactHoursToken.balanceOf(accountIH90), bn(maxRate), bigExp(expectedRaisePerIH * 100, 18), bigExp(raised, 18))
+          await impactHours.reward(raised, accountIH90),
+          await reward(await impactHoursToken.balanceOf(accountIH90), impactHoursTokenDecimals, maxRate, expectedRaise, raised)
         )
         assertBn(
-          await impactHours.reward(bigExp(raised, 18), accountIH10),
-          amount(await impactHoursToken.balanceOf(accountIH10), bn(maxRate), bigExp(expectedRaisePerIH * 100, 18), bigExp(raised, 18))
+          await impactHours.reward(raised, accountIH10),
+          await reward(await impactHoursToken.balanceOf(accountIH10), impactHoursTokenDecimals, maxRate, expectedRaise, raised)
         )
       })
+    }
+
+    describe('reward(uint256 totalRaised, address contributor', () => {
+      context('Impact hours token with 18 decimals', () => rewardTest(18))
+      context('Impact hours token with 10 decimals', () => rewardTest(10))
     })
 
     describe('claimReward(address[] _contributors)', async() => {
-      loop((maxRate, expectedRaisePerIH, raised) => async() => {
+      loop(async (maxRate, expectedRaise, raised) => {
         await hatch.setState(3)
-        await hatch.contribute(bigExp(raised, 18))
-        await impactHours.initialize(impactHoursToken.address, hatch.address, maxRate, expectedRaisePerIH)
+        await hatch.contribute(raised)
+        await impactHours.initialize(impactHoursToken18.address, hatch.address, maxRate, expectedRaise)
         await impactHours.claimReward([accountIH90, accountIH10])
         for (let account of [accountIH90, accountIH10]) {
-          const contributedAmount = amount(await impactHoursToken.balanceOf(account), bn(maxRate), bigExp(expectedRaisePerIH * 100, 18), bigExp(raised, 18))
-          assertBn(await hatchToken.balanceOf(account), await hatch.contributionToTokens(contributedAmount))
+          const expectedReward = await reward(await impactHoursToken18.balanceOf(account), 18, maxRate, expectedRaise, raised)
+          assertBn(await hatchToken.balanceOf(account), expectedReward)
         }
       })
     })
 
-    describe('canPerform(address, address, bytes32, uint256[])', async() => {
+    describe('closeHatch()', async() => {
       beforeEach('initialize impact hours', async () => {
-        await impactHours.initialize(impactHoursToken.address, hatch.address, MAX_RATE, EXPECTED_RAISE_PER_IH)
+        await impactHours.initialize(impactHoursToken18.address, hatch.address, MAX_RATE, EXPECTED_RAISE)
       })
+
+      context('with permission', async() => {
+        beforeEach('add CLOSE_ROLE permission', async() => {
+          await acl.createPermission(ANY_ENTITY, impactHours.address, CLOSE_ROLE, appManager)
+        })
+
+        it('can perform when all cloned impact hour tokens have been burned', async() => {
+          await hatch.setState(3)
+          await impactHours.claimReward([accountIH90, accountIH10])
+          await impactHours.closeHatch()
+          assert.strictEqual((await hatch.state()).toNumber(), 4)
+        })
   
-      it('can perform when all cloned impact hour tokens have been burned', async() => {
+        it('can not perform when not all cloned impact hour tokens have been burned', async() => {
+          await hatch.setState(3)
+          await impactHours.claimReward([accountIH90])
+          await assertRevert(impactHours.closeHatch(), 'ERROR_IMPACT_HOURS_NOT_FULLY_CLAIMED')
+        })
+      })
+
+      it('can not close hatch if addess do not have permission', async() => {
         await hatch.setState(3)
         await impactHours.claimReward([accountIH90, accountIH10])
-        assert.isTrue(await impactHours.canPerform(ZERO_ADDR, ZERO_ADDR, '0x', []))
-      })
-
-      it('can not perform when not all cloned impact hour tokens have been burned', async() => {
-        await hatch.setState(3)
-        await impactHours.claimReward([accountIH90])
-        assert.isFalse(await impactHours.canPerform(ZERO_ADDR, ZERO_ADDR, '0x', []))
-      })
-    })
-
-    describe('hatch.close()', async() => {
-      beforeEach(async() => {
-        await impactHours.initialize(impactHoursToken.address, hatch.address, MAX_RATE, EXPECTED_RAISE_PER_IH)
-        await acl.createPermission(ANY_ENTITY, hatch.address, CLOSE_ROLE, appManager)
-        await acl.grantPermissionP(ANY_ENTITY, hatch.address, CLOSE_ROLE, [createEqOraclePermissionParam(impactHours.address)])
-      })
-
-      it('can not close the hatch if not all impact hours have been claimed', async () => {
-        await hatch.setState(3)
-        await impactHours.claimReward([accountIH90])
-        await assertRevert(hatch.close())
-      })
-
-      it('can close when all impact hours have been claimed', async() => {
-        await hatch.setState(3)
-        await impactHours.claimReward([accountIH90, accountIH10])
-
-        assert.isTrue(await impactHours.canPerform(ZERO_ADDR, ZERO_ADDR, '0x', []))
-        await hatch.close()
+        await assertRevert(impactHours.closeHatch(), 'APP_AUTH_FAILED')
       })
     })
   }

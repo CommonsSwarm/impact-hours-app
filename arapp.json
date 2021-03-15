@@ -2,7 +2,7 @@
   "roles": [
     {
       "name": "Close hatch",
-      "id": "CLOSE_ROLE",
+      "id": "CLOSE_HATCH_ROLE",
       "params": []
     }
   ],

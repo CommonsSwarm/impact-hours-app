@@ -6,6 +6,8 @@ node_modules
 build/
 dist/
 
+.vscode
+
 .DS_Store
 package-lock.json
 yarn.lock

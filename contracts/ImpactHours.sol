@@ -9,7 +9,9 @@ import { IHatch as Hatch } from "./IHatch.sol";
 contract ImpactHours is AragonApp {
     using SafeMath for uint256;
 
-    bytes32 public constant CLOSE_ROLE = keccak256("CLOSE_ROLE");
+    bytes32 public constant CLOSE_HATCH_ROLE = keccak256("CLOSE_HATCH_ROLE");
+    
+    // Variable hatch.State.GOAL_REACHED is only available in Solidity compiler v0.5.0.
     uint8 private constant GOAL_REACHED = 3;
 
     MiniMeToken public token;
@@ -55,7 +57,7 @@ contract ImpactHours is AragonApp {
     /**
      * @notice Close hatch
      */
-    function closeHatch() external auth(CLOSE_ROLE) {
+    function closeHatch() external auth(CLOSE_HATCH_ROLE) {
         require(token.totalSupply() == 0, 'ERROR_IMPACT_HOURS_NOT_FULLY_CLAIMED');
         hatch.close();
     }

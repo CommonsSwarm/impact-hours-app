@@ -16,7 +16,7 @@ contract(
   'ImpactHours',
   ([appManager, accountIH90, accountIH10]) => {
     let impactHoursBase, tokenManagerBase, hatchBase, impactHours, hatch, hatchToken, impactHoursToken18, impactHoursToken10, tokenFactory
-    let MINT_ROLE, CLOSE_ROLE
+    let MINT_ROLE, CLOSE_ROLE, CLOSE_HATCH_ROLE
 
     const PPM = 1000000
     const EXCHANGE_RATE = 10 * PPM
@@ -24,12 +24,14 @@ contract(
     const EXPECTED_RAISE = bigExp(100, 18)
 
     before('deploy base apps', async () => {
-      impactHoursBase = await ImpactHours.new()
-      tokenManagerBase = await TokenManager.new()
       hatchBase = await Hatch.new()
+      impactHoursBase = await ImpactHours.new()
       tokenFactory = await MiniMeTokenFactory.new()
-      MINT_ROLE = await tokenManagerBase.MINT_ROLE()
+      tokenManagerBase = await TokenManager.new()
+
       CLOSE_ROLE = await hatchBase.CLOSE_ROLE()
+      CLOSE_HATCH_ROLE = await impactHoursBase.CLOSE_HATCH_ROLE()
+      MINT_ROLE = await tokenManagerBase.MINT_ROLE()
     })
 
     before('create tokens', async () => {
@@ -75,6 +77,7 @@ contract(
 
       await acl.createPermission(impactHours.address, tokenManager.address, MINT_ROLE, appManager)
       await acl.createPermission(impactHours.address, hatch.address, CLOSE_ROLE, appManager)
+      await acl.createPermission(ANY_ENTITY, impactHours.address, CLOSE_HATCH_ROLE, appManager)
     })
 
     describe('initialize(MiniMeToken _token, address _hatch, uint256 _maxRate, uint256 _expectedRaise)', () => {
@@ -201,26 +204,21 @@ contract(
         await impactHours.initialize(impactHoursToken18.address, hatch.address, MAX_RATE, EXPECTED_RAISE)
       })
 
-      context('with permission', async() => {
-        beforeEach('add CLOSE_ROLE permission', async() => {
-          await acl.createPermission(ANY_ENTITY, impactHours.address, CLOSE_ROLE, appManager)
-        })
+      it('can perform when all cloned impact hour tokens have been burned', async() => {
+        await hatch.setState(3)
+        await impactHours.claimReward([accountIH90, accountIH10])
+        await impactHours.closeHatch()
+        assert.strictEqual((await hatch.state()).toNumber(), 4)
+      })
 
-        it('can perform when all cloned impact hour tokens have been burned', async() => {
-          await hatch.setState(3)
-          await impactHours.claimReward([accountIH90, accountIH10])
-          await impactHours.closeHatch()
-          assert.strictEqual((await hatch.state()).toNumber(), 4)
-        })
-  
-        it('can not perform when not all cloned impact hour tokens have been burned', async() => {
-          await hatch.setState(3)
-          await impactHours.claimReward([accountIH90])
-          await assertRevert(impactHours.closeHatch(), 'ERROR_IMPACT_HOURS_NOT_FULLY_CLAIMED')
-        })
+      it('can not perform when not all cloned impact hour tokens have been burned', async() => {
+        await hatch.setState(3)
+        await impactHours.claimReward([accountIH90])
+        await assertRevert(impactHours.closeHatch(), 'ERROR_IMPACT_HOURS_NOT_FULLY_CLAIMED')
       })
 
       it('can not close hatch if addess do not have permission', async() => {
+        await acl.revokePermission(ANY_ENTITY, impactHours.address, CLOSE_HATCH_ROLE)
         await hatch.setState(3)
         await impactHours.claimReward([accountIH90, accountIH10])
         await assertRevert(impactHours.closeHatch(), 'APP_AUTH_FAILED')

@@ -26,7 +26,7 @@ The formula has two parameters:
 ## Roles
 
 The Impact Hours app implements the following role:
-- **CLOSE_ROLE**: It allows to close the Hatch when all impact hours tokens have been claimed.
+- **CLOSE_HATCH_ROLE**: It allows to close the Hatch when all impact hours tokens have been claimed.
 
 The Impact Hours app should have the following roles:
 - **MINT_ROLE**: It should be able to mint tokens in the Hatch's Token Manager.

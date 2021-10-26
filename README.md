@@ -17,11 +17,15 @@ The Impact Hours is initialized with `MiniMeToken _token`, `address _hatch`, `ui
 
 We determine the rate of each impact hour with the following formula where the independent variable (x) is the total funds raised:
 
-![R*x/(x+E)](https://render.githubusercontent.com/render/math?math=R\frac{x}{x%2bE})
+<p align="center"><img alt="f(x)=R*x/(x+E)" src="https://render.githubusercontent.com/render/math?math=f(x)=R\frac{x}{x%2bE}" /></p>
 
 The formula has two parameters:
-* _R_ : Max rate limit per impact hour. It’s an asymptotic limit never reached, no matter how much funds are raised.
+* _R_ : Impact Hour Rate at Infinity. It’s an asymptotic limit never reached, no matter how much funds are raised.
 * _E_ : Expected raise, in which the rate is half the max rate. A low number makes a more curved function, whereas a high number flattens the curve.
+
+You can also calculate _E_ from a point specified as target rate (_r_) and a target goal (_G_) using the following equation:
+
+<p align="center"><img alt="E=(R/r-1)*G" src="https://render.githubusercontent.com/render/math?math=E=\left(\frac{R}{r}-1\right)G" /></p>
 
 ## Roles
 

@@ -1,15 +1,15 @@
-const { assertRevert } = require('@aragon/contract-helpers-test/src/asserts')
+const { assertRevert } = require('@1hive/contract-helpers-test/src/asserts')
 const ImpactHours = artifacts.require('ImpactHours')
 const MiniMeToken = artifacts.require('MiniMeToken')
 const MiniMeTokenFactory = artifacts.require('MiniMeTokenFactory')
 const Hatch = artifacts.require('HatchMock')
 const TokenManager = artifacts.require('TokenManagerMock')
 
-const { newDao, installNewApp, ANY_ENTITY } = require('@aragon/contract-helpers-test/src/aragon-os')
-const { assertBn } = require('@aragon/contract-helpers-test/src/asserts')
+const { newDao, installNewApp, ANY_ENTITY } = require('@1hive/contract-helpers-test/src/aragon-os')
+const { assertBn } = require('@1hive/contract-helpers-test/src/asserts')
 
 const { hash: nameHash } = require('eth-ens-namehash')
-const { bn, bigExp } = require('@aragon/contract-helpers-test/src/numbers')
+const { bn, bigExp } = require('@1hive/contract-helpers-test/src/numbers')
 const ZERO_ADDR = '0x' + '0'.repeat(40)
 
 contract(

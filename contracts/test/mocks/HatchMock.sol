@@ -40,20 +40,21 @@ contract HatchMock is AragonApp {
         totalRaised = totalRaised.add(_amount);
     }
 
-    function state() public view isInitialized returns (State) {
-        return internalState;
-    }
-
     function setState(State _state) external isInitialized {
         internalState = _state;
     }
 
-    function contributionToTokens(uint256 _value) public view isInitialized returns (uint256) {
-        return _value.mul(exchangeRate).div(PPM);
-    }
 
     function close() external auth(CLOSE_ROLE) {
         internalState = State.Closed;
         emit Close();
+    }
+
+    function state() public view isInitialized returns (State) {
+        return internalState;
+    }
+
+    function contributionToTokens(uint256 _value) public view isInitialized returns (uint256) {
+        return _value.mul(exchangeRate).div(PPM);
     }
 }

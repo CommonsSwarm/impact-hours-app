@@ -8,8 +8,7 @@ import "@aragon/os/contracts/kernel/KernelProxy.sol";
 
 
 contract TestImports {
-
     constructor() public {
-
+        // solium-disable-previous-line no-empty-blocks
     }
 }

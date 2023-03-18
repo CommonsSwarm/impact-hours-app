@@ -44,7 +44,6 @@ contract HatchMock is AragonApp {
         internalState = _state;
     }
 
-
     function close() external auth(CLOSE_ROLE) {
         internalState = State.Closed;
         emit Close();

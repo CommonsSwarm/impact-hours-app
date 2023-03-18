@@ -1,10 +1,5 @@
 {
   "roles": [
-    {
-      "name": "Close hatch",
-      "id": "CLOSE_HATCH_ROLE",
-      "params": []
-    }
   ],
   "environments": {
     "default": {

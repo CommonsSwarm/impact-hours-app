@@ -9,17 +9,15 @@ import { IHatch as Hatch } from "./IHatch.sol";
 contract ImpactHours is AragonApp {
     using SafeMath for uint256;
 
-    bytes32 public constant CLOSE_HATCH_ROLE = keccak256("CLOSE_HATCH_ROLE");
-
-    // Variable hatch.State.GOAL_REACHED is only available in Solidity compiler v0.5.0.
-    uint8 private constant GOAL_REACHED = 3;
+    // Variable hatch.State.CLOSED is only available in Solidity compiler v0.5.0.
+    uint8 private constant CLOSED = 4;
 
     MiniMeToken public token;
     Hatch public hatch;
     uint256 public maxRate;
     uint256 public expectedRaise;
 
-    string private constant ERROR_HATCH_NOT_GOAL_REACHED = "IH_HATCH_NOT_GOAL_REACHED";
+    string private constant ERROR_HATCH_NOT_CLOSED = "IH_HATCH_NOT_CLOSED";
     string private constant ERROR_NOT_ALL_TOKENS_BURNT = "IH_NOT_ALL_TOKENS_BURNT";
     string private constant ERROR_IMPACT_HOURS_NOT_FULLY_CLAIMED = "IH_NOT_FULLY_CLAIMED";
 
@@ -27,7 +25,7 @@ contract ImpactHours is AragonApp {
      * @notice Initialize Impact Hours app with the `_token.symbol(): string` impact hours token, for the hatch `_hatch`, and with a max rate of `_maxRate` and an expected raise of `_expectedRaise`
      * @dev We store a clone of the impact hours tokens that will be burn as soon as they are claimed
      * @param _token Impact hours token
-     * @param _hatch Hatch to be closed
+     * @param _hatch Hatch recently closed
      * @param _maxRate Max rate limit per impact hour
      * @param _expectedRaise Expected raise, in which the rate is half the max rate
      */
@@ -46,21 +44,13 @@ contract ImpactHours is AragonApp {
      * @param _contributors List of contributors
      */
     function claimReward(address[] _contributors) external isInitialized {
-        require(hatch.state() == GOAL_REACHED, ERROR_HATCH_NOT_GOAL_REACHED);
+        require(hatch.state() == CLOSED, ERROR_HATCH_NOT_CLOSED);
         for (uint256 i = 0; i < _contributors.length; i++) {
             uint256 _amount = reward(hatch.totalRaised(), _contributors[i]);
             token.destroyTokens(_contributors[i], token.balanceOf(_contributors[i]));
             require(token.balanceOf(_contributors[i]) == 0, ERROR_NOT_ALL_TOKENS_BURNT); // All claimed tokens should be burned
             hatch.tokenManager().mint(_contributors[i], _amount);
         }
-    }
-
-    /**
-     * @notice Close hatch
-     */
-    function closeHatch() external auth(CLOSE_HATCH_ROLE) {
-        require(token.totalSupply() == 0, ERROR_IMPACT_HOURS_NOT_FULLY_CLAIMED);
-        hatch.close();
     }
 
     /**

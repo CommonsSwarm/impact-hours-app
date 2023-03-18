@@ -16,7 +16,7 @@ contract(
   'ImpactHours',
   ([appManager, accountIH90, accountIH10]) => {
     let impactHoursBase, tokenManagerBase, hatchBase, impactHours, hatch, hatchToken, impactHoursToken18, impactHoursToken10, tokenFactory
-    let MINT_ROLE, CLOSE_ROLE, CLOSE_HATCH_ROLE
+    let MINT_ROLE
 
     const PPM = 1000000
     const EXCHANGE_RATE = 10 * PPM
@@ -29,8 +29,6 @@ contract(
       tokenFactory = await MiniMeTokenFactory.new()
       tokenManagerBase = await TokenManager.new()
 
-      CLOSE_ROLE = await hatchBase.CLOSE_ROLE()
-      CLOSE_HATCH_ROLE = await impactHoursBase.CLOSE_HATCH_ROLE()
       MINT_ROLE = await tokenManagerBase.MINT_ROLE()
     })
 
@@ -76,8 +74,6 @@ contract(
       await hatch.initialize(tokenManager.address, EXCHANGE_RATE)
 
       await acl.createPermission(impactHours.address, tokenManager.address, MINT_ROLE, appManager)
-      await acl.createPermission(impactHours.address, hatch.address, CLOSE_ROLE, appManager)
-      await acl.createPermission(ANY_ENTITY, impactHours.address, CLOSE_HATCH_ROLE, appManager)
     })
 
     describe('initialize(MiniMeToken _token, address _hatch, uint256 _maxRate, uint256 _expectedRaise)', () => {
@@ -118,31 +114,31 @@ contract(
 
       it('can not claim if state is Pending', async () => {
         await hatch.setState(0) // Pending
-        await assertRevert(impactHours.claimReward([accountIH90, accountIH10]), 'IH_HATCH_NOT_GOAL_REACHED')
+        await assertRevert(impactHours.claimReward([accountIH90, accountIH10]), 'IH_HATCH_NOT_CLOSED')
       })
 
       it('can not claim if state is Funding', async () => {
         await hatch.setState(1) // Funding
-        await assertRevert(impactHours.claimReward([accountIH90, accountIH10]), 'IH_HATCH_NOT_GOAL_REACHED')
+        await assertRevert(impactHours.claimReward([accountIH90, accountIH10]), 'IH_HATCH_NOT_CLOSED')
       })
 
       it('can not claim if state is Refunding', async () => {
         await hatch.setState(2) // Refunding
-        await assertRevert(impactHours.claimReward([accountIH90, accountIH10]), 'IH_HATCH_NOT_GOAL_REACHED')
+        await assertRevert(impactHours.claimReward([accountIH90, accountIH10]), 'IH_HATCH_NOT_CLOSED')
       })
 
-      it('can claim if state is Goal Reached', async () => {
+      it('can not claim if state is Goal Reached', async () => {
         await hatch.setState(3) // Goal Reached
+        await assertRevert(impactHours.claimReward([accountIH90, accountIH10]), 'IH_HATCH_NOT_CLOSED')
+      })
+
+      it('can claim if state is Closed', async () => {
+        await hatch.setState(4) // Closed
         await impactHours.claimReward([accountIH90, accountIH10])
       })
 
-      it('can not claim if state is Closed', async () => {
-        await hatch.setState(4) // Closed
-        await assertRevert(impactHours.claimReward([accountIH90, accountIH10]), 'IH_HATCH_NOT_GOAL_REACHED')
-      })
-
       it('destroys impact hours tokens when they are claimed', async() => {
-        await hatch.setState(3)
+        await hatch.setState(4)
         await impactHours.claimReward([accountIH90, accountIH10])
         const clonedToken = await MiniMeToken.at(await impactHours.token())
         assertBn(await clonedToken.balanceOf(accountIH90), bn(0))
@@ -188,7 +184,7 @@ contract(
 
     describe('claimReward(address[] _contributors)', async() => {
       loop(async (maxRate, expectedRaise, raised) => {
-        await hatch.setState(3)
+        await hatch.setState(4)
         await hatch.contribute(raised)
         await impactHours.initialize(impactHoursToken18.address, hatch.address, maxRate, expectedRaise)
         await impactHours.claimReward([accountIH90, accountIH10])
@@ -196,32 +192,6 @@ contract(
           const expectedReward = await reward(await impactHoursToken18.balanceOf(account), 18, maxRate, expectedRaise, raised)
           assertBn(await hatchToken.balanceOf(account), expectedReward)
         }
-      })
-    })
-
-    describe('closeHatch()', async() => {
-      beforeEach('initialize impact hours', async () => {
-        await impactHours.initialize(impactHoursToken18.address, hatch.address, MAX_RATE, EXPECTED_RAISE)
-      })
-
-      it('can perform when all cloned impact hour tokens have been burned', async() => {
-        await hatch.setState(3)
-        await impactHours.claimReward([accountIH90, accountIH10])
-        await impactHours.closeHatch()
-        assert.strictEqual((await hatch.state()).toNumber(), 4)
-      })
-
-      it('can not perform when not all cloned impact hour tokens have been burned', async() => {
-        await hatch.setState(3)
-        await impactHours.claimReward([accountIH90])
-        await assertRevert(impactHours.closeHatch(), 'ERROR_IMPACT_HOURS_NOT_FULLY_CLAIMED')
-      })
-
-      it('can not close hatch if addess do not have permission', async() => {
-        await acl.revokePermission(ANY_ENTITY, impactHours.address, CLOSE_HATCH_ROLE)
-        await hatch.setState(3)
-        await impactHours.claimReward([accountIH90, accountIH10])
-        await assertRevert(impactHours.closeHatch(), 'APP_AUTH_FAILED')
       })
     })
   }

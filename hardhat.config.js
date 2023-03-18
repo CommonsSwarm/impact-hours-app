@@ -29,11 +29,6 @@ module.exports = {
     appEnsName: 'impact-hours.open.aragonpm.eth',
     appContractName: 'ImpactHours',
     appRoles: [
-      {
-        "name": "Close hatch",
-        "id": "CLOSE_HATCH_ROLE",
-        "params": []
-      }
     ],
     appBuildOutputPath: 'public/',
   },
